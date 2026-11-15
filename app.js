@@ -1,82 +1,839 @@
-const KEY='devfoundy-academy-v1';
-const DEFAULT={completed:[],quizzes:{},bookmarks:[],project:[],notes:{},last:'1-1',theme:null};
-let state=load();
-let activeCode={html:'<main>\n  <h1>My tasks</h1>\n  <form id="form">\n    <label for="task">New task</label>\n    <input id="task" required>\n    <button>Add</button>\n  </form>\n  <ul id="list"></ul>\n</main>',css:'body { font: 16px system-ui; max-width: 42rem; margin: 3rem auto; padding: 1rem; }\nli { padding: .4rem; }',js:'const form = document.querySelector("#form");\nconst list = document.querySelector("#list");\nform.addEventListener("submit", event => {\n  event.preventDefault();\n  const input = document.querySelector("#task");\n  const title = input.value.trim();\n  if (!title) return;\n  const item = document.createElement("li");\n  item.textContent = title;\n  list.append(item);\n  input.value = "";\n});'};
-const main=document.querySelector('#main');
-const $=(q,scope=document)=>scope.querySelector(q);
-const $$=(q,scope=document)=>[...scope.querySelectorAll(q)];
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function load(){try{const p=JSON.parse(localStorage.getItem(KEY));return p&&typeof p==='object'?{...DEFAULT,...p}:structuredClone(DEFAULT)}catch{return structuredClone(DEFAULT)}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch{toast('This browser cannot save progress right now.')}}
-function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),3400)}
-function allLessons(){return modules.flatMap((m,mi)=>m.lessons.map((l,li)=>({...l,id:`${mi+1}-${li+1}`,module:mi+1,number:li+1})))}
-const lessons=allLessons();
-function lessonById(id){return lessons.find(l=>l.id===id)}
-function pct(){return Math.round(state.completed.filter(id=>lessonById(id)).length/lessons.length*100)}
-function progress(){return `<div class="progress" role="progressbar" aria-label="Lesson progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct()}"><span style="width:${pct()}%"></span></div>`}
-function goto(route){location.hash=route}
-function heading(eyebrow,title,desc=''){return `<div class="eyebrow">${eyebrow}</div><h1>${title}</h1>${desc?`<p class="lead">${desc}</p>`:''}`}
-function shell(content){main.innerHTML=`<div class="container">${content}</div>`}
-function sidebar(current){return `<aside class="sidebar panel" aria-label="Course outline"><h3>Course outline</h3>${progress()}<p class="muted" style="font-size:12px;margin:12px 8px">${state.completed.length} of 18 lessons complete</p>${modules.map((m,i)=>`<div class="side-group"><strong>${String(i+1).padStart(2,'0')} · ${esc(m.title)}</strong>${m.lessons.map((l,j)=>{const id=`${i+1}-${j+1}`;return `<a href="#/lesson/${id}" ${id===current?'aria-current="page"':''}>${state.completed.includes(id)?'✓ ':''}${esc(l.title)}</a>`}).join('')}<a href="#/quiz/${i+1}">${state.quizzes[i+1]?'✓ ':''}Module quiz →</a></div>`).join('')}</aside>`}
-const catalog=[{slug:'ai-assisted-development',title:'AI-Assisted Software Development',subtitle:'From Prompt to Production',description:'Plan, build, review, test, and publish a small app with AI assistance and a clear understanding of your code.',level:'Beginner to intermediate',duration:'4–6 hours',modules:6,lessons:18}];
-function courseCards(){return catalog.map(c=>`<article class="card course-card"><div class="eyebrow">Course 001 · 100% free</div><h3>${esc(c.title)}</h3><p><strong>${esc(c.subtitle)}</strong></p><p>${esc(c.description)}</p><div class="stats"><span class="pill">${c.modules} modules</span><span class="pill">${c.lessons} lessons</span><span class="pill">${c.duration}</span><span class="pill">${c.level}</span></div><a class="button" href="#/course/${c.slug}">Explore course →</a></article>`).join('')}
-function home(){shell(`<section class="hero"><div>${heading('Learn by making · 100% free','DevFoundy Academy','Practical courses for curious builders. Choose a course, experiment with real tools, and take what you learn into your own projects.')}<div class="actions"><a class="button" href="#/courses">Explore courses →</a>${state.completed.length?'<a class="button secondary" href="#/learn">Continue learning</a>':''}</div></div><div class="hero-art panel" aria-label="Learning approach"><div class="eyebrow">Our approach</div>${['Start with an idea','Learn through small experiments','Build something useful','Share what you made'].map((s,i)=>`<div class="flow-step"><b>${i+1}</b>${s}</div>`).join('')}</div></section><section class="section"><div class="eyebrow">Course library</div><h2>Choose what to learn.</h2><p class="lead">Every course has its own lessons, activities, and project. Begin with the first course below; the Academy can grow without changing how you browse it.</p><div class="grid">${courseCards()}</div></section><section class="section"><h2>Built for understanding.</h2><p class="lead">Short lessons lead into exercises, knowledge checks, and a project you can take beyond the course. Your progress stays in this browser. No account or payment is required.</p></section>`)}
-function courses(){shell(`${heading('Course library','Find your next build.','Choose a course below. More subjects can be added to the Academy over time.')}<div class="grid">${courseCards()}</div>`)}
-function courseLanding(){shell(`${heading('Course 001 · 100% free','AI-Assisted Software Development','From Prompt to Production: learn to turn an idea into working software with AI assistance, then review and verify what you build.')}<div class="stats"><span class="pill">Beginner to intermediate</span><span class="pill">4–6 hours</span><span class="pill">6 modules · 18 lessons</span><span class="pill">No account</span></div><div class="actions"><a class="button" href="#/lesson/${state.last||'1-1'}">${state.completed.length?'Continue course':'Start course'} →</a><a class="button secondary" href="#/learn">View curriculum</a></div><section class="section"><h2>What you will learn</h2><div class="grid">${['Plan an app and define testable requirements','Write clear prompts and review generated code','Debug failures and check for security mistakes','Use Git and deploy a working project','Build TaskFlow Lite as a final project','Develop judgment you can use without AI'].map(x=>`<div class="card">✓ ${esc(x)}</div>`).join('')}</div></section><section class="section"><h2>How the course works</h2><p class="lead">Each of the 18 lessons has an interactive activity and a knowledge check. Six module quizzes require 75% to pass and allow retries. The code playground and prompt tools run in your browser without sending your input to a model.</p><p class="muted">Prerequisites: curiosity and basic computer use. Created by Kenta at DevFoundy. Progress is saved locally, so clearing browser data will erase it.</p><a class="button secondary" href="#/learn">See modules →</a></section>`)}
-function learn(){shell(`${heading('AI-Assisted Software Development','Your learning journey','A practical path from an idea to a working, verified release. Progress is saved in this browser only.')}
-<div class="stats"><span class="pill">100% free</span><span class="pill">No account</span><span class="pill">Beginner → intermediate</span><span class="pill">4–6 hours</span></div><div class="panel card" style="margin:25px 0"><div class="row" style="justify-content:space-between"><strong>${pct()}% complete · ${state.completed.length}/18 lessons</strong><a class="button small" href="#/lesson/${state.last||'1-1'}">Resume →</a></div><div style="margin-top:15px">${progress()}</div><p class="muted" style="margin:12px 0 0">Module quizzes: ${Object.keys(state.quizzes).filter(k=>state.quizzes[k]).length}/6 passed · Final project: ${state.project.length}/8 stages checked</p></div>
-<section class="section"><h2>What you will learn</h2><div class="grid">${['Plan a small app with requirements','Write clear prompts and review code','Debug and test generated features','Protect secrets and handle input','Use Git and publish a static app','Build a complete TaskFlow Lite project'].map(x=>`<div class="card">✓ ${esc(x)}</div>`).join('')}</div><p class="muted" style="margin-top:22px">Prerequisites: basic computer use and curiosity. No prior programming experience required. A desktop browser is most comfortable for the coding playground; lessons and checks also work on touch devices.</p></section><section class="section"><h2>Curriculum</h2><div class="grid">${modules.map((m,i)=>`<article class="card module-card"><div class="eyebrow">Module ${String(i+1).padStart(2,'0')} · ${m.minutes} min</div><h3>${esc(m.title)}</h3><p class="muted">${m.lessons.map(l=>esc(l.title)).join(' · ')}</p><span class="pill">${m.lessons.filter((_,j)=>state.completed.includes(`${i+1}-${j+1}`)).length}/3 lessons · ${state.quizzes[i+1]?'Quiz passed':'Quiz available'}</span><a class="button small secondary" href="#/lesson/${i+1}-1">Open module →</a></article>`).join('')}</div></section><section class="section"><h2>About the course</h2><p class="lead">Created by Kenta at DevFoundy for people who learn by making things. Activities and prompt checks run locally in your browser; they do not call an AI model. Save important work outside this browser too, because clearing site data erases local progress.</p></section>`)}
-function lesson(id){const l=lessonById(id);if(!l){notFound();return}state.last=id;save();const index=lessons.findIndex(x=>x.id===id);const prev=lessons[index-1],next=lessons[index+1];const marked=state.bookmarks.includes(id);shell(`<div class="course-layout">${sidebar(id)}<article class="article"><section class="panel"><div class="eyebrow">Module ${String(l.module).padStart(2,'0')} / Lesson ${String(l.number).padStart(2,'0')} · ${l.minutes} min</div><h1>${esc(l.title)}</h1><div class="row"><span class="pill">${state.completed.includes(id)?'✓ Completed':'In progress'}</span><button class="button small secondary" id="bookmark">${marked?'★ Bookmarked':'☆ Bookmark'}</button><button class="button small secondary" id="outline">Outline</button></div><div style="margin-top:20px">${progress()}</div></section><section class="panel"><h2>What you will learn</h2><ul>${l.objectives.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>${l.body.map((p,i)=>`<h2>${['The idea','How it works','Put it into practice'][i]}</h2><p>${esc(p)}</p>`).join('')}<div class="example"><strong>Example</strong><br>${esc(l.example)}</div></section><section class="panel"><div class="eyebrow">Try it</div><h2>Interactive activity</h2><div id="activity"></div></section><section class="panel"><div class="eyebrow">Knowledge check</div><h2>Check your understanding</h2><p>${esc(l.check.q)}</p><div class="answer-grid" id="check-options">${l.check.options.map((o,i)=>`<button class="answer" data-answer="${i}" type="button">${esc(o)}</button>`).join('')}</div><div class="feedback" id="check-feedback" hidden></div><button class="button" id="complete" type="button" ${state.completed.includes(id)?'':'disabled'}>${state.completed.includes(id)?'✓ Lesson complete':'Complete lesson'}</button></section><section class="panel"><h2>Key takeaway</h2><p>${esc(l.takeaway)}</p><div class="lesson-nav">${prev?`<a class="button secondary" href="#/lesson/${prev.id}">← Previous</a>`:'<span></span>'}${l.number===3?`<a class="button" href="#/quiz/${l.module}">Module quiz →</a>`:next?`<a class="button" href="#/lesson/${next.id}">Next lesson →</a>`:''}</div></section></article></div>`);
-  $('#bookmark').onclick=()=>{state.bookmarks=marked?state.bookmarks.filter(x=>x!==id):[...state.bookmarks,id];save();lesson(id);toast(marked?'Bookmark removed':'Lesson bookmarked')};
-  $('#outline').onclick=()=>{const s=$('.sidebar');s.hidden=!s.hidden;$('#outline').textContent=s.hidden?'Show outline':'Hide outline'};
-  $$('#check-options .answer').forEach(b=>b.onclick=()=>{const right=Number(b.dataset.answer)===l.check.answer;$$('#check-options .answer').forEach(x=>{x.classList.remove('selected','correct','wrong');x.classList.add(Number(x.dataset.answer)===l.check.answer?'correct':x===b?'wrong':'selected')});const f=$('#check-feedback');f.hidden=false;f.textContent=`${right?'Correct.':'Try again.'} ${l.check.why}`;if(right)$('#complete').disabled=false});
-  $('#complete').onclick=()=>{if(!state.completed.includes(id))state.completed.push(id);state.last=next?.id||id;save();toast('Lesson saved. Nice work.');lesson(id)};
+const KEY = "devfoundy-academy-v1";
+const DEFAULT = {
+  completed: [],
+  quizzes: {},
+  bookmarks: [],
+  project: [],
+  notes: {},
+  last: "1-1",
+  theme: null,
+};
+let state = load();
+let activeCode = {
+  html: '<main>\n  <h1>My tasks</h1>\n  <form id="form">\n    <label for="task">New task</label>\n    <input id="task" required>\n    <button>Add</button>\n  </form>\n  <ul id="list"></ul>\n</main>',
+  css: "body { font: 16px system-ui; max-width: 42rem; margin: 3rem auto; padding: 1rem; }\nli { padding: .4rem; }",
+  js: 'const form = document.querySelector("#form");\nconst list = document.querySelector("#list");\nform.addEventListener("submit", event => {\n  event.preventDefault();\n  const input = document.querySelector("#task");\n  const title = input.value.trim();\n  if (!title) return;\n  const item = document.createElement("li");\n  item.textContent = title;\n  list.append(item);\n  input.value = "";\n});',
+};
+const main = document.querySelector("#main");
+const $ = (q, scope = document) => scope.querySelector(q);
+const $$ = (q, scope = document) => [...scope.querySelectorAll(q)];
+const esc = (s) =>
+  String(s ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+function load() {
+  try {
+    const p = JSON.parse(localStorage.getItem(KEY));
+    return p && typeof p === "object"
+      ? { ...DEFAULT, ...p }
+      : structuredClone(DEFAULT);
+  } catch {
+    return structuredClone(DEFAULT);
+  }
+}
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    toast("This browser cannot save progress right now.");
+  }
+}
+function toast(message) {
+  const el = $("#toast");
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove("show"), 3400);
+}
+function allLessons() {
+  return modules.flatMap((m, mi) =>
+    m.lessons.map((l, li) => ({
+      ...l,
+      id: `${mi + 1}-${li + 1}`,
+      module: mi + 1,
+      number: li + 1,
+    })),
+  );
+}
+const lessons = allLessons();
+function lessonById(id) {
+  return lessons.find((l) => l.id === id);
+}
+function pct() {
+  return Math.round(
+    (state.completed.filter((id) => lessonById(id)).length / lessons.length) *
+      100,
+  );
+}
+function progress() {
+  return `<div class="progress" role="progressbar" aria-label="Lesson progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct()}"><span style="width:${pct()}%"></span></div>`;
+}
+function goto(route) {
+  location.hash = route;
+}
+function heading(eyebrow, title, desc = "") {
+  return `<div class="eyebrow">${eyebrow}</div><h1>${title}</h1>${desc ? `<p class="lead">${desc}</p>` : ""}`;
+}
+function shell(content) {
+  main.innerHTML = `<div class="container">${content}</div>`;
+}
+function sidebar(current) {
+  return `<aside class="sidebar panel" aria-label="Course outline"><h3>Course outline</h3>${progress()}<p class="muted" style="font-size:12px;margin:12px 8px">${state.completed.length} of 18 lessons complete</p>${modules
+    .map(
+      (m, i) =>
+        `<div class="side-group"><strong>${String(i + 1).padStart(2, "0")} · ${esc(m.title)}</strong>${m.lessons
+          .map((l, j) => {
+            const id = `${i + 1}-${j + 1}`;
+            return `<a href="#/lesson/${id}" ${id === current ? 'aria-current="page"' : ""}>${state.completed.includes(id) ? "✓ " : ""}${esc(l.title)}</a>`;
+          })
+          .join(
+            "",
+          )}<a href="#/quiz/${i + 1}">${state.quizzes[i + 1] ? "✓ " : ""}Module quiz →</a></div>`,
+    )
+    .join("")}</aside>`;
+}
+const catalog = [
+  {
+    slug: "ai-assisted-development",
+    title: "AI-Assisted Software Development",
+    subtitle: "From Prompt to Production",
+    description:
+      "Plan, build, review, test, and publish a small app with AI assistance and a clear understanding of your code.",
+    level: "Beginner to intermediate",
+    duration: "4–6 hours",
+    modules: 6,
+    lessons: 18,
+  },
+];
+function courseCards() {
+  return catalog
+    .map(
+      (c) =>
+        `<article class="card course-card"><div class="eyebrow">Course 001 · 100% free</div><h3>${esc(c.title)}</h3><p><strong>${esc(c.subtitle)}</strong></p><p>${esc(c.description)}</p><div class="stats"><span class="pill">${c.modules} modules</span><span class="pill">${c.lessons} lessons</span><span class="pill">${c.duration}</span><span class="pill">${c.level}</span></div><a class="button" href="#/course/${c.slug}">Explore course →</a></article>`,
+    )
+    .join("");
+}
+function home() {
+  shell(
+    `<section class="hero"><div>${heading("Learn by making · 100% free", "DevFoundy Academy", "Practical courses for curious builders. Choose a course, experiment with real tools, and take what you learn into your own projects.")}<div class="actions"><a class="button" href="#/courses">Explore courses →</a>${state.completed.length ? '<a class="button secondary" href="#/learn">Continue learning</a>' : ""}</div></div><div class="hero-art panel" aria-label="Learning approach"><div class="eyebrow">Our approach</div>${["Start with an idea", "Learn through small experiments", "Build something useful", "Share what you made"].map((s, i) => `<div class="flow-step"><b>${i + 1}</b>${s}</div>`).join("")}</div></section><section class="section"><div class="eyebrow">Course library</div><h2>Choose what to learn.</h2><p class="lead">Every course has its own lessons, activities, and project. Begin with the first course below; the Academy can grow without changing how you browse it.</p><div class="grid">${courseCards()}</div></section><section class="section"><h2>Built for understanding.</h2><p class="lead">Short lessons lead into exercises, knowledge checks, and a project you can take beyond the course. Your progress stays in this browser. No account or payment is required.</p></section>`,
+  );
+}
+function courses() {
+  shell(
+    `${heading("Course library", "Find your next build.", "Choose a course below. More subjects can be added to the Academy over time.")}<div class="grid">${courseCards()}</div>`,
+  );
+}
+function courseLanding() {
+  shell(
+    `${heading("Course 001 · 100% free", "AI-Assisted Software Development", "From Prompt to Production: learn to turn an idea into working software with AI assistance, then review and verify what you build.")}<div class="stats"><span class="pill">Beginner to intermediate</span><span class="pill">4–6 hours</span><span class="pill">6 modules · 18 lessons</span><span class="pill">No account</span></div><div class="actions"><a class="button" href="#/lesson/${state.last || "1-1"}">${state.completed.length ? "Continue course" : "Start course"} →</a><a class="button secondary" href="#/learn">View curriculum</a></div><section class="section"><h2>What you will learn</h2><div class="grid">${["Plan an app and define testable requirements", "Write clear prompts and review generated code", "Debug failures and check for security mistakes", "Use Git and deploy a working project", "Build TaskFlow Lite as a final project", "Develop judgment you can use without AI"].map((x) => `<div class="card">✓ ${esc(x)}</div>`).join("")}</div></section><section class="section"><h2>How the course works</h2><p class="lead">Each of the 18 lessons has an interactive activity and a knowledge check. Six module quizzes require 75% to pass and allow retries. The code playground and prompt tools run in your browser without sending your input to a model.</p><p class="muted">Prerequisites: curiosity and basic computer use. Created by Kenta at DevFoundy. Progress is saved locally, so clearing browser data will erase it.</p><a class="button secondary" href="#/learn">See modules →</a></section>`,
+  );
+}
+function learn() {
+  shell(`${heading("AI-Assisted Software Development", "Your learning journey", "A practical path from an idea to a working, verified release. Progress is saved in this browser only.")}
+<div class="stats"><span class="pill">100% free</span><span class="pill">No account</span><span class="pill">Beginner → intermediate</span><span class="pill">4–6 hours</span></div><div class="panel card" style="margin:25px 0"><div class="row" style="justify-content:space-between"><strong>${pct()}% complete · ${state.completed.length}/18 lessons</strong><a class="button small" href="#/lesson/${state.last || "1-1"}">Resume →</a></div><div style="margin-top:15px">${progress()}</div><p class="muted" style="margin:12px 0 0">Module quizzes: ${Object.keys(state.quizzes).filter((k) => state.quizzes[k]).length}/6 passed · Final project: ${state.project.length}/8 stages checked</p></div>
+<section class="section"><h2>What you will learn</h2><div class="grid">${["Plan a small app with requirements", "Write clear prompts and review code", "Debug and test generated features", "Protect secrets and handle input", "Use Git and publish a static app", "Build a complete TaskFlow Lite project"].map((x) => `<div class="card">✓ ${esc(x)}</div>`).join("")}</div><p class="muted" style="margin-top:22px">Prerequisites: basic computer use and curiosity. No prior programming experience required. A desktop browser is most comfortable for the coding playground; lessons and checks also work on touch devices.</p></section><section class="section"><h2>Curriculum</h2><div class="grid">${modules.map((m, i) => `<article class="card module-card"><div class="eyebrow">Module ${String(i + 1).padStart(2, "0")} · ${m.minutes} min</div><h3>${esc(m.title)}</h3><p class="muted">${m.lessons.map((l) => esc(l.title)).join(" · ")}</p><span class="pill">${m.lessons.filter((_, j) => state.completed.includes(`${i + 1}-${j + 1}`)).length}/3 lessons · ${state.quizzes[i + 1] ? "Quiz passed" : "Quiz available"}</span><a class="button small secondary" href="#/lesson/${i + 1}-1">Open module →</a></article>`).join("")}</div></section><section class="section"><h2>About the course</h2><p class="lead">Created by Kenta at DevFoundy for people who learn by making things. Activities and prompt checks run locally in your browser; they do not call an AI model. Save important work outside this browser too, because clearing site data erases local progress.</p></section>`);
+}
+function lesson(id) {
+  const l = lessonById(id);
+  if (!l) {
+    notFound();
+    return;
+  }
+  state.last = id;
+  save();
+  const index = lessons.findIndex((x) => x.id === id);
+  const prev = lessons[index - 1],
+    next = lessons[index + 1];
+  const marked = state.bookmarks.includes(id);
+  shell(
+    `<div class="course-layout">${sidebar(id)}<article class="article"><section class="panel"><div class="eyebrow">Module ${String(l.module).padStart(2, "0")} / Lesson ${String(l.number).padStart(2, "0")} · ${l.minutes} min</div><h1>${esc(l.title)}</h1><div class="row"><span class="pill">${state.completed.includes(id) ? "✓ Completed" : "In progress"}</span><button class="button small secondary" id="bookmark">${marked ? "★ Bookmarked" : "☆ Bookmark"}</button><button class="button small secondary" id="outline">Outline</button></div><div style="margin-top:20px">${progress()}</div></section><section class="panel"><h2>What you will learn</h2><ul>${l.objectives.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${l.body.map((p, i) => `<h2>${["The idea", "How it works", "Put it into practice"][i]}</h2><p>${esc(p)}</p>`).join("")}<div class="example"><strong>Example</strong><br>${esc(l.example)}</div></section><section class="panel"><div class="eyebrow">Try it</div><h2>Interactive activity</h2><div id="activity"></div></section><section class="panel"><div class="eyebrow">Knowledge check</div><h2>Check your understanding</h2><p>${esc(l.check.q)}</p><div class="answer-grid" id="check-options">${l.check.options.map((o, i) => `<button class="answer" data-answer="${i}" type="button">${esc(o)}</button>`).join("")}</div><div class="feedback" id="check-feedback" hidden></div><button class="button" id="complete" type="button" ${state.completed.includes(id) ? "" : "disabled"}>${state.completed.includes(id) ? "✓ Lesson complete" : "Complete lesson"}</button></section><section class="panel"><h2>Key takeaway</h2><p>${esc(l.takeaway)}</p><div class="lesson-nav">${prev ? `<a class="button secondary" href="#/lesson/${prev.id}">← Previous</a>` : "<span></span>"}${l.number === 3 ? `<a class="button" href="#/quiz/${l.module}">Module quiz →</a>` : next ? `<a class="button" href="#/lesson/${next.id}">Next lesson →</a>` : ""}</div></section></article></div>`,
+  );
+  $("#bookmark").onclick = () => {
+    state.bookmarks = marked
+      ? state.bookmarks.filter((x) => x !== id)
+      : [...state.bookmarks, id];
+    save();
+    lesson(id);
+    toast(marked ? "Bookmark removed" : "Lesson bookmarked");
+  };
+  $("#outline").onclick = () => {
+    const s = $(".sidebar");
+    s.hidden = !s.hidden;
+    $("#outline").textContent = s.hidden ? "Show outline" : "Hide outline";
+  };
+  $$("#check-options .answer").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const right = Number(b.dataset.answer) === l.check.answer;
+        $$("#check-options .answer").forEach((x) => {
+          x.classList.remove("selected", "correct", "wrong");
+          x.classList.add(
+            Number(x.dataset.answer) === l.check.answer
+              ? "correct"
+              : x === b
+                ? "wrong"
+                : "selected",
+          );
+        });
+        const f = $("#check-feedback");
+        f.hidden = false;
+        f.textContent = `${right ? "Correct." : "Try again."} ${l.check.why}`;
+        if (right) $("#complete").disabled = false;
+      }),
+  );
+  $("#complete").onclick = () => {
+    if (!state.completed.includes(id)) state.completed.push(id);
+    state.last = next?.id || id;
+    save();
+    toast("Lesson saved. Nice work.");
+    lesson(id);
+  };
   renderActivity(l);
 }
-function optionActivity(prompt,items,correct,why){return `<p>${esc(prompt)}</p><div class="answer-grid">${items.map((o,i)=>`<button class="answer" type="button" data-choice="${i}">${esc(o)}</button>`).join('')}</div><div class="feedback" hidden></div>`}
-const activityCases={
-  decision:['Who should decide whether a new app needs user accounts?',['The developer, based on user needs','The AI, because it writes code','A random package'],0,'Account decisions affect scope, privacy, and security.'],
-  review:['A generated patch adds a large framework for one button. What should you do?',['Accept without reading','Review the diff and ask whether the dependency is needed','Delete the project'],1,'A small change should be justified and scoped.'],
-  milestones:['What is the best first milestone for a task app?',['Build login, billing, and a calendar','Add one task in memory and verify it appears','Deploy an empty page'],1,'One small observable behavior is easy to verify.'],
-  debug:['The page crashes when saved data is malformed. What should you investigate?',['Parsing at startup and error handling','The button color','The site logo'],0,'Check the failing data path before changing unrelated code.'],
-  security:['Which generated line needs immediate review?',['item.textContent = title','const API_KEY = "private-key" in app.js','input.focus()'],1,'A private key must not be shipped in browser assets.'],
-  deploy:['The local app works, but CSS is missing on a project page. Which path is suspect?',['/style.css','./style.css','index.html'],0,'A root-relative path points to the site root, not the project subdirectory.']
-};
-function renderActivity(l){const box=$('#activity'),type=l.activity.type;
-  if(type==='workflow'){box.innerHTML='<p>Compare the work behind a small task app.</p><div class="row"><button class="button small" data-flow="traditional">Traditional</button><button class="button small secondary" data-flow="assisted">AI-assisted</button></div><div class="callout" id="flow-output" aria-live="polite"></div>';const flows={traditional:'Define behavior → design the data → write the feature → test input and refresh → review → publish.',assisted:'Define behavior → design the data → ask AI for a small draft → understand and edit it → test input and refresh → review → publish.'};$$('[data-flow]',box).forEach(b=>b.onclick=()=>{$$('[data-flow]',box).forEach(x=>x.classList.toggle('secondary',x!==b));$('#flow-output').textContent=flows[b.dataset.flow]});$('#flow-output').textContent=flows.traditional;return}
-  if(type==='spot'){box.innerHTML='<p>Select each response to inspect its risk.</p>'+['Use localStorage.save("tasks", items) to persist them.','Put your private API key in app.js so the browser can use it.','Use localStorage.setItem with JSON.stringify, then test reloading.'].map((x,i)=>`<button class="answer" data-spot="${i}" style="margin:5px 0">${esc(x)}</button>`).join('')+'<div class="feedback" hidden></div>';const explanations=['Nonexistent browser method. Verify the API in documentation.','Exposes the key to every visitor. Move private operations to a backend.','A reasonable first implementation, but still test and handle malformed saved data.'];$$('[data-spot]',box).forEach(b=>b.onclick=()=>{const f=$('.feedback',box);f.hidden=false;f.textContent=explanations[Number(b.dataset.spot)];b.classList.add('selected')});return}
-  if(type==='analyzer'){box.innerHTML='<p>This local checklist looks for useful prompt structure. It is not an AI quality score.</p><label class="field">Your development prompt<textarea id="analyze" placeholder="Build a task app for... using... It must... Do not... Return..."></textarea></label><button class="button" id="analyze-button">Check structure</button><div class="feedback" id="analyze-result" hidden></div>';$('#analyze-button').onclick=()=>{const v=$('#analyze').value.trim(),rules=[['Goal',/build|create|make|implement|fix|develop/i],['Context',/existing|current|for (students|users|me)|project|file|app/i],['Requirements',/must|include|can |should|feature|allow/i],['Constraints',/using|without|do not|no (new|external)|html|css|javascript|react/i],['Expected output',/return|provide|explain|show|test plan|deliver/i]];const f=$('#analyze-result');f.hidden=false;f.innerHTML=v?`<strong>Structured checklist · ${rules.filter(r=>r[1].test(v)).length}/5 signals</strong><ul>${rules.map(([n,re])=>`<li>${re.test(v)?'✓':'Consider adding'} ${n}</li>`).join('')}</ul><small>Keyword checks can miss good prompts. Read your prompt yourself.</small>`:'Write a prompt first.'};return}
-  if(type==='builder'){const fields=['Project name','Application goal','Target audience','Technology stack','Required features','Design requirements','Technical constraints','Expected deliverable'];box.innerHTML='<p>Fill the fields to create a prompt. Nothing is sent to a server.</p>'+fields.map((f,i)=>`<label class="field">${f}<input data-prompt-field="${i}" placeholder="${esc(f)}"></label>`).join('')+'<label class="field">Generated prompt<textarea id="generated" readonly></textarea></label><div class="row"><button class="button small" id="copy-prompt">Copy prompt</button><button class="button small secondary" id="example-prompt">Load example</button><button class="button small secondary" id="reset-prompt">Reset</button></div>';const inputs=$$('[data-prompt-field]',box),update=()=>$('#generated').value=fields.map((f,i)=>`${f}: ${inputs[i].value.trim()||'[add detail]'}`).join('\n');inputs.forEach(x=>x.oninput=update);$('#example-prompt').onclick=()=>{['TaskFlow Lite','Help one person keep track of tasks','Students','HTML, CSS, JavaScript','Add, complete, delete and save tasks','Readable on a phone','No external packages or private keys','Working files, explanation and test checklist'].forEach((v,i)=>inputs[i].value=v);update()};$('#reset-prompt').onclick=()=>{inputs.forEach(x=>x.value='');update()};$('#copy-prompt').onclick=()=>copy($('#generated').value);update();return}
-  if(type==='priority'){const features=[['Add tasks','Essential'],['Keep tasks after refresh','Essential'],['Team billing','Later'],['Animated avatar','Later']];box.innerHTML='<p>Classify features for the first personal task app.</p>'+features.map(([f],i)=>`<label class="field">${f}<select data-priority="${i}"><option value="">Choose</option><option>Essential</option><option>Later</option></select></label>`).join('')+'<button class="button" id="check-priority">Check decisions</button><div class="feedback" hidden></div>';$('#check-priority').onclick=()=>{let n=features.filter(([f,v],i)=>$(`[data-priority="${i}"]`).value===v).length;const f=$('.feedback',box);f.hidden=false;f.textContent=`${n}/4 aligned with the first-release scope. Add and save are core; billing and an avatar can wait.`};return}
-  if(type==='files'){const files={'index.html':'Semantic content and form controls.','styles/main.css':'Layout, responsive rules, and interaction states.','scripts/app.js':'Connects interface events to task functions.','scripts/tasks.js':'Task creation, completion, and deletion logic.','scripts/storage.js':'Reads and writes the local task data.','README.md':'Setup, usage, and known limitations.'};box.innerHTML='<p>Explore the files in a small project.</p><div class="answer-grid">'+Object.keys(files).map(f=>`<button class="answer" data-file="${esc(f)}">${esc(f)}</button>`).join('')+'</div><div class="feedback" hidden></div>';$$('[data-file]',box).forEach(b=>b.onclick=()=>{const f=$('.feedback',box);f.hidden=false;f.textContent=files[b.dataset.file]});return}
-  if(type==='playground'){box.innerHTML='<p>Edit HTML, CSS, or JavaScript and press Run. The preview is sandboxed; do not put secrets into example code.</p><div class="workbench"><div class="workbench-tabs" role="tablist" aria-label="Code language">'+['html','css','js'].map((x,i)=>`<button role="tab" aria-selected="${i===0}" data-code-tab="${x}">${x.toUpperCase()}</button>`).join('')+'</div><label class="field" style="margin:0"><span class="sr-only">Code editor</span><textarea id="code-editor" spellcheck="false" aria-label="HTML code editor"></textarea></label><div class="workbench-controls"><button class="button small" id="run-code">Run preview</button><button class="button small secondary" id="download-code">Download HTML</button><button class="button small secondary" id="reset-code">Reset example</button></div><iframe title="Sandboxed code preview" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer"></iframe></div>';let current='html';const editor=$('#code-editor'),show=()=>{editor.value=activeCode[current];editor.setAttribute('aria-label',current.toUpperCase()+' code editor')};editor.oninput=()=>activeCode[current]=editor.value;$$('[data-code-tab]',box).forEach(b=>b.onclick=()=>{current=b.dataset.codeTab;$$('[data-code-tab]',box).forEach(x=>x.setAttribute('aria-selected',String(x===b)));show()});$('#run-code').onclick=runCode;$('#download-code').onclick=()=>download('taskflow-example.html',documentCode());$('#reset-code').onclick=()=>{if(confirm('Reset the example code in this playground?')){activeCode={html:'<h1>Hello, developer!</h1>',css:'body { font: 18px system-ui; padding: 2rem; }',js:'console.log("Ready");'};show();runCode()}};show();runCode();return}
-  if(type==='testplan'||type==='git'||type==='reflection'){if(type==='testplan'){box.innerHTML='<p>Which checks give meaningful coverage for the task app?</p><div class="checklist">'+['Add and delete a task','Refresh and check persistence','Try empty and long input','Use only the mouse','Navigate with the keyboard'].map((x,i)=>`<label class="checkrow"><input type="checkbox" data-test="${i}">${x}</label>`).join('')+'</div><div class="feedback">Select the cases you would run. Mouse-only testing misses keyboard users.</div>';return}if(type==='git'){box.innerHTML='<p>Put these Git steps in order by selecting them.</p><div class="answer-grid">'+['Commit','Review the diff','Push','Stage intended files'].map(x=>`<button class="answer" data-step="${x}">${x}</button>`).join('')+'</div><div class="feedback" id="git-feedback">Selected: none</div>';let picked=[];$$('[data-step]',box).forEach(b=>b.onclick=()=>{if(picked.includes(b.dataset.step))return;picked.push(b.dataset.step);b.disabled=true;$('#git-feedback').textContent='Selected: '+picked.join(' → ')+(picked.length===4?(picked.join('|')==='Review the diff|Stage intended files|Commit|Push'?' · Correct order.':' · Try again: review, stage, commit, push.'):'');if(picked.length===4)setTimeout(()=>{$$('[data-step]',box).forEach(x=>x.disabled=false);picked=[]},2500)});return}box.innerHTML='<p>What will you build next? Write a small idea and one way you will verify it.</p><label class="field">Your reflection<textarea id="reflection" placeholder="I want to build... I will test it by..."></textarea></label><button class="button" id="save-reflection">Save reflection locally</button>';$('#reflection').value=state.notes.reflection||'';$('#save-reflection').onclick=()=>{state.notes.reflection=$('#reflection').value;save();toast('Reflection saved in this browser')};return}
-  if(type==='stack'){box.innerHTML=optionActivity('Your app only needs one person’s tasks on one browser. Which stack is enough for a first version?',['HTML, CSS, JavaScript, localStorage','A paid server cluster and three databases','Only an image editor'],0,'Static browser technologies are sufficient for this scope.')}
-  else if(type==='choice'){box.innerHTML=optionActivity(l.activity.prompt,l.activity.options,l.activity.answer,'Make the smallest change that addresses the observed behavior.')}
-  else if(activityCases[type]){const [q,opts,correct,why]=activityCases[type];box.innerHTML=optionActivity(q,opts,correct,why)}
-  else{box.innerHTML='<p>Review the example above, then use the knowledge check below.</p>'}
-  const [q,opts,correct,why]=type==='stack'?['',[],0,'Static browser technologies are sufficient for this scope.']:type==='choice'?['',[],l.activity.answer,'A focused follow-up preserves working behavior.']:activityCases[type]||['',[],0,''];$$('[data-choice]',box).forEach(b=>b.onclick=()=>{const f=$('.feedback',box),right=Number(b.dataset.choice)===correct;f.hidden=false;f.textContent=(right?'Correct. ':'Consider the scope again. ')+why;$$('[data-choice]',box).forEach(x=>x.classList.toggle('correct',Number(x.dataset.choice)===correct));if(!right)b.classList.add('wrong')});
+function optionActivity(prompt, items, correct, why) {
+  return `<p>${esc(prompt)}</p><div class="answer-grid">${items.map((o, i) => `<button class="answer" type="button" data-choice="${i}">${esc(o)}</button>`).join("")}</div><div class="feedback" hidden></div>`;
 }
-function documentCode(){return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${activeCode.css.replace(/<\/style/gi,'<\\/style')}</style></head><body>${activeCode.html}<script>${activeCode.js.replace(/<\/script/gi,'<\\/script')}<\/script></body></html>`}
-function runCode(){const frame=$('.workbench iframe');frame.srcdoc=`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'">${documentCode()}`}
-function download(name,body){const url=URL.createObjectURL(new Blob([body],{type:'text/html'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
-async function copy(text){try{await navigator.clipboard.writeText(text);toast('Copied to clipboard')}catch{toast('Clipboard access unavailable. Select and copy the text manually.')}}
-const extraQuestions=[
-  {q:'What can an AI assistant reliably guarantee without verification?',options:['That all code is secure','That APIs exist','Neither of these'],answer:2,why:'Generated suggestions require verification.'},
-  {q:'What is a useful constraint in a prompt?',options:['Do not add dependencies','Make it good','Do everything'],answer:0,why:'A concrete boundary limits scope.'},
-  {q:'What does MVP mean?',options:['The largest feature set possible','The smallest useful first version','A database vendor'],answer:1,why:'An MVP solves the central problem with minimal scope.'},
-  {q:'Why review a code diff?',options:['To see all changed lines and spot unrelated edits','To measure font size','To count images only'],answer:0,why:'A diff reveals the actual scope of a change.'},
-  {q:'Which is a useful test case?',options:['Only the ideal input','Empty input and malformed saved data','Only a screenshot'],answer:1,why:'Edge cases expose hidden assumptions.'},
-  {q:'What is a good release habit?',options:['Test the public URL','Trust the push message alone','Remove the README'],answer:0,why:'A deployed page can behave differently.'}
+const activityCases = {
+  decision: [
+    "Who should decide whether a new app needs user accounts?",
+    [
+      "The developer, based on user needs",
+      "The AI, because it writes code",
+      "A random package",
+    ],
+    0,
+    "Account decisions affect scope, privacy, and security.",
+  ],
+  review: [
+    "A generated patch adds a large framework for one button. What should you do?",
+    [
+      "Accept without reading",
+      "Review the diff and ask whether the dependency is needed",
+      "Delete the project",
+    ],
+    1,
+    "A small change should be justified and scoped.",
+  ],
+  milestones: [
+    "What is the best first milestone for a task app?",
+    [
+      "Build login, billing, and a calendar",
+      "Add one task in memory and verify it appears",
+      "Deploy an empty page",
+    ],
+    1,
+    "One small observable behavior is easy to verify.",
+  ],
+  debug: [
+    "The page crashes when saved data is malformed. What should you investigate?",
+    [
+      "Parsing at startup and error handling",
+      "The button color",
+      "The site logo",
+    ],
+    0,
+    "Check the failing data path before changing unrelated code.",
+  ],
+  security: [
+    "Which generated line needs immediate review?",
+    [
+      "item.textContent = title",
+      'const API_KEY = "private-key" in app.js',
+      "input.focus()",
+    ],
+    1,
+    "A private key must not be shipped in browser assets.",
+  ],
+  deploy: [
+    "The local app works, but CSS is missing on a project page. Which path is suspect?",
+    ["/style.css", "./style.css", "index.html"],
+    0,
+    "A root-relative path points to the site root, not the project subdirectory.",
+  ],
+};
+function renderActivity(l) {
+  const box = $("#activity"),
+    type = l.activity.type;
+  if (type === "workflow") {
+    box.innerHTML =
+      '<p>Compare the work behind a small task app.</p><div class="row"><button class="button small" data-flow="traditional">Traditional</button><button class="button small secondary" data-flow="assisted">AI-assisted</button></div><div class="callout" id="flow-output" aria-live="polite"></div>';
+    const flows = {
+      traditional:
+        "Define behavior → design the data → write the feature → test input and refresh → review → publish.",
+      assisted:
+        "Define behavior → design the data → ask AI for a small draft → understand and edit it → test input and refresh → review → publish.",
+    };
+    $$("[data-flow]", box).forEach(
+      (b) =>
+        (b.onclick = () => {
+          $$("[data-flow]", box).forEach((x) =>
+            x.classList.toggle("secondary", x !== b),
+          );
+          $("#flow-output").textContent = flows[b.dataset.flow];
+        }),
+    );
+    $("#flow-output").textContent = flows.traditional;
+    return;
+  }
+  if (type === "spot") {
+    box.innerHTML =
+      "<p>Select each response to inspect its risk.</p>" +
+      [
+        'Use localStorage.save("tasks", items) to persist them.',
+        "Put your private API key in app.js so the browser can use it.",
+        "Use localStorage.setItem with JSON.stringify, then test reloading.",
+      ]
+        .map(
+          (x, i) =>
+            `<button class="answer" data-spot="${i}" style="margin:5px 0">${esc(x)}</button>`,
+        )
+        .join("") +
+      '<div class="feedback" hidden></div>';
+    const explanations = [
+      "Nonexistent browser method. Verify the API in documentation.",
+      "Exposes the key to every visitor. Move private operations to a backend.",
+      "A reasonable first implementation, but still test and handle malformed saved data.",
+    ];
+    $$("[data-spot]", box).forEach(
+      (b) =>
+        (b.onclick = () => {
+          const f = $(".feedback", box);
+          f.hidden = false;
+          f.textContent = explanations[Number(b.dataset.spot)];
+          b.classList.add("selected");
+        }),
+    );
+    return;
+  }
+  if (type === "analyzer") {
+    box.innerHTML =
+      '<p>This local checklist looks for useful prompt structure. It is not an AI quality score.</p><label class="field">Your development prompt<textarea id="analyze" placeholder="Build a task app for... using... It must... Do not... Return..."></textarea></label><button class="button" id="analyze-button">Check structure</button><div class="feedback" id="analyze-result" hidden></div>';
+    $("#analyze-button").onclick = () => {
+      const v = $("#analyze").value.trim(),
+        rules = [
+          ["Goal", /build|create|make|implement|fix|develop/i],
+          [
+            "Context",
+            /existing|current|for (students|users|me)|project|file|app/i,
+          ],
+          ["Requirements", /must|include|can |should|feature|allow/i],
+          [
+            "Constraints",
+            /using|without|do not|no (new|external)|html|css|javascript|react/i,
+          ],
+          ["Expected output", /return|provide|explain|show|test plan|deliver/i],
+        ];
+      const f = $("#analyze-result");
+      f.hidden = false;
+      f.innerHTML = v
+        ? `<strong>Structured checklist · ${rules.filter((r) => r[1].test(v)).length}/5 signals</strong><ul>${rules.map(([n, re]) => `<li>${re.test(v) ? "✓" : "Consider adding"} ${n}</li>`).join("")}</ul><small>Keyword checks can miss good prompts. Read your prompt yourself.</small>`
+        : "Write a prompt first.";
+    };
+    return;
+  }
+  if (type === "builder") {
+    const fields = [
+      "Project name",
+      "Application goal",
+      "Target audience",
+      "Technology stack",
+      "Required features",
+      "Design requirements",
+      "Technical constraints",
+      "Expected deliverable",
+    ];
+    box.innerHTML =
+      "<p>Fill the fields to create a prompt. Nothing is sent to a server.</p>" +
+      fields
+        .map(
+          (f, i) =>
+            `<label class="field">${f}<input data-prompt-field="${i}" placeholder="${esc(f)}"></label>`,
+        )
+        .join("") +
+      '<label class="field">Generated prompt<textarea id="generated" readonly></textarea></label><div class="row"><button class="button small" id="copy-prompt">Copy prompt</button><button class="button small secondary" id="example-prompt">Load example</button><button class="button small secondary" id="reset-prompt">Reset</button></div>';
+    const inputs = $$("[data-prompt-field]", box),
+      update = () =>
+        ($("#generated").value = fields
+          .map((f, i) => `${f}: ${inputs[i].value.trim() || "[add detail]"}`)
+          .join("\n"));
+    inputs.forEach((x) => (x.oninput = update));
+    $("#example-prompt").onclick = () => {
+      [
+        "TaskFlow Lite",
+        "Help one person keep track of tasks",
+        "Students",
+        "HTML, CSS, JavaScript",
+        "Add, complete, delete and save tasks",
+        "Readable on a phone",
+        "No external packages or private keys",
+        "Working files, explanation and test checklist",
+      ].forEach((v, i) => (inputs[i].value = v));
+      update();
+    };
+    $("#reset-prompt").onclick = () => {
+      inputs.forEach((x) => (x.value = ""));
+      update();
+    };
+    $("#copy-prompt").onclick = () => copy($("#generated").value);
+    update();
+    return;
+  }
+  if (type === "priority") {
+    const features = [
+      ["Add tasks", "Essential"],
+      ["Keep tasks after refresh", "Essential"],
+      ["Team billing", "Later"],
+      ["Animated avatar", "Later"],
+    ];
+    box.innerHTML =
+      "<p>Classify features for the first personal task app.</p>" +
+      features
+        .map(
+          ([f], i) =>
+            `<label class="field">${f}<select data-priority="${i}"><option value="">Choose</option><option>Essential</option><option>Later</option></select></label>`,
+        )
+        .join("") +
+      '<button class="button" id="check-priority">Check decisions</button><div class="feedback" hidden></div>';
+    $("#check-priority").onclick = () => {
+      let n = features.filter(
+        ([f, v], i) => $(`[data-priority="${i}"]`).value === v,
+      ).length;
+      const f = $(".feedback", box);
+      f.hidden = false;
+      f.textContent = `${n}/4 aligned with the first-release scope. Add and save are core; billing and an avatar can wait.`;
+    };
+    return;
+  }
+  if (type === "files") {
+    const files = {
+      "index.html": "Semantic content and form controls.",
+      "styles/main.css": "Layout, responsive rules, and interaction states.",
+      "scripts/app.js": "Connects interface events to task functions.",
+      "scripts/tasks.js": "Task creation, completion, and deletion logic.",
+      "scripts/storage.js": "Reads and writes the local task data.",
+      "README.md": "Setup, usage, and known limitations.",
+    };
+    box.innerHTML =
+      '<p>Explore the files in a small project.</p><div class="answer-grid">' +
+      Object.keys(files)
+        .map(
+          (f) =>
+            `<button class="answer" data-file="${esc(f)}">${esc(f)}</button>`,
+        )
+        .join("") +
+      '</div><div class="feedback" hidden></div>';
+    $$("[data-file]", box).forEach(
+      (b) =>
+        (b.onclick = () => {
+          const f = $(".feedback", box);
+          f.hidden = false;
+          f.textContent = files[b.dataset.file];
+        }),
+    );
+    return;
+  }
+  if (type === "playground") {
+    box.innerHTML =
+      '<p>Edit HTML, CSS, or JavaScript and press Run. The preview is sandboxed; do not put secrets into example code.</p><div class="workbench"><div class="workbench-tabs" role="tablist" aria-label="Code language">' +
+      ["html", "css", "js"]
+        .map(
+          (x, i) =>
+            `<button role="tab" aria-selected="${i === 0}" data-code-tab="${x}">${x.toUpperCase()}</button>`,
+        )
+        .join("") +
+      '</div><label class="field" style="margin:0"><span class="sr-only">Code editor</span><textarea id="code-editor" spellcheck="false" aria-label="HTML code editor"></textarea></label><div class="workbench-controls"><button class="button small" id="run-code">Run preview</button><button class="button small secondary" id="download-code">Download HTML</button><button class="button small secondary" id="reset-code">Reset example</button></div><iframe title="Sandboxed code preview" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer"></iframe></div>';
+    let current = "html";
+    const editor = $("#code-editor"),
+      show = () => {
+        editor.value = activeCode[current];
+        editor.setAttribute(
+          "aria-label",
+          current.toUpperCase() + " code editor",
+        );
+      };
+    editor.oninput = () => (activeCode[current] = editor.value);
+    $$("[data-code-tab]", box).forEach(
+      (b) =>
+        (b.onclick = () => {
+          current = b.dataset.codeTab;
+          $$("[data-code-tab]", box).forEach((x) =>
+            x.setAttribute("aria-selected", String(x === b)),
+          );
+          show();
+        }),
+    );
+    $("#run-code").onclick = runCode;
+    $("#download-code").onclick = () =>
+      download("taskflow-example.html", documentCode());
+    $("#reset-code").onclick = () => {
+      if (confirm("Reset the example code in this playground?")) {
+        activeCode = {
+          html: "<h1>Hello, developer!</h1>",
+          css: "body { font: 18px system-ui; padding: 2rem; }",
+          js: 'console.log("Ready");',
+        };
+        show();
+        runCode();
+      }
+    };
+    show();
+    runCode();
+    return;
+  }
+  if (type === "testplan" || type === "git" || type === "reflection") {
+    if (type === "testplan") {
+      box.innerHTML =
+        '<p>Which checks give meaningful coverage for the task app?</p><div class="checklist">' +
+        [
+          "Add and delete a task",
+          "Refresh and check persistence",
+          "Try empty and long input",
+          "Use only the mouse",
+          "Navigate with the keyboard",
+        ]
+          .map(
+            (x, i) =>
+              `<label class="checkrow"><input type="checkbox" data-test="${i}">${x}</label>`,
+          )
+          .join("") +
+        '</div><div class="feedback">Select the cases you would run. Mouse-only testing misses keyboard users.</div>';
+      return;
+    }
+    if (type === "git") {
+      box.innerHTML =
+        '<p>Put these Git steps in order by selecting them.</p><div class="answer-grid">' +
+        ["Commit", "Review the diff", "Push", "Stage intended files"]
+          .map((x) => `<button class="answer" data-step="${x}">${x}</button>`)
+          .join("") +
+        '</div><div class="feedback" id="git-feedback">Selected: none</div>';
+      let picked = [];
+      $$("[data-step]", box).forEach(
+        (b) =>
+          (b.onclick = () => {
+            if (picked.includes(b.dataset.step)) return;
+            picked.push(b.dataset.step);
+            b.disabled = true;
+            $("#git-feedback").textContent =
+              "Selected: " +
+              picked.join(" → ") +
+              (picked.length === 4
+                ? picked.join("|") ===
+                  "Review the diff|Stage intended files|Commit|Push"
+                  ? " · Correct order."
+                  : " · Try again: review, stage, commit, push."
+                : "");
+            if (picked.length === 4)
+              setTimeout(() => {
+                $$("[data-step]", box).forEach((x) => (x.disabled = false));
+                picked = [];
+              }, 2500);
+          }),
+      );
+      return;
+    }
+    box.innerHTML =
+      '<p>What will you build next? Write a small idea and one way you will verify it.</p><label class="field">Your reflection<textarea id="reflection" placeholder="I want to build... I will test it by..."></textarea></label><button class="button" id="save-reflection">Save reflection locally</button>';
+    $("#reflection").value = state.notes.reflection || "";
+    $("#save-reflection").onclick = () => {
+      state.notes.reflection = $("#reflection").value;
+      save();
+      toast("Reflection saved in this browser");
+    };
+    return;
+  }
+  if (type === "stack") {
+    box.innerHTML = optionActivity(
+      "Your app only needs one person’s tasks on one browser. Which stack is enough for a first version?",
+      [
+        "HTML, CSS, JavaScript, localStorage",
+        "A paid server cluster and three databases",
+        "Only an image editor",
+      ],
+      0,
+      "Static browser technologies are sufficient for this scope.",
+    );
+  } else if (type === "choice") {
+    box.innerHTML = optionActivity(
+      l.activity.prompt,
+      l.activity.options,
+      l.activity.answer,
+      "Make the smallest change that addresses the observed behavior.",
+    );
+  } else if (activityCases[type]) {
+    const [q, opts, correct, why] = activityCases[type];
+    box.innerHTML = optionActivity(q, opts, correct, why);
+  } else {
+    box.innerHTML =
+      "<p>Review the example above, then use the knowledge check below.</p>";
+  }
+  const [q, opts, correct, why] =
+    type === "stack"
+      ? [
+          "",
+          [],
+          0,
+          "Static browser technologies are sufficient for this scope.",
+        ]
+      : type === "choice"
+        ? [
+            "",
+            [],
+            l.activity.answer,
+            "A focused follow-up preserves working behavior.",
+          ]
+        : activityCases[type] || ["", [], 0, ""];
+  $$("[data-choice]", box).forEach(
+    (b) =>
+      (b.onclick = () => {
+        const f = $(".feedback", box),
+          right = Number(b.dataset.choice) === correct;
+        f.hidden = false;
+        f.textContent =
+          (right ? "Correct. " : "Consider the scope again. ") + why;
+        $$("[data-choice]", box).forEach((x) =>
+          x.classList.toggle("correct", Number(x.dataset.choice) === correct),
+        );
+        if (!right) b.classList.add("wrong");
+      }),
+  );
+}
+function documentCode() {
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${activeCode.css.replace(/<\/style/gi, "<\\/style")}</style></head><body>${activeCode.html}<script>${activeCode.js.replace(/<\/script/gi, "<\\/script")}<\/script></body></html>`;
+}
+function runCode() {
+  const frame = $(".workbench iframe");
+  frame.srcdoc = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; form-action 'none'; base-uri 'none'">${documentCode()}`;
+}
+function download(name, body) {
+  const url = URL.createObjectURL(new Blob([body], { type: "text/html" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied to clipboard");
+  } catch {
+    toast("Clipboard access unavailable. Select and copy the text manually.");
+  }
+}
+const extraQuestions = [
+  {
+    q: "What can an AI assistant reliably guarantee without verification?",
+    options: ["That all code is secure", "That APIs exist", "Neither of these"],
+    answer: 2,
+    why: "Generated suggestions require verification.",
+  },
+  {
+    q: "What is a useful constraint in a prompt?",
+    options: ["Do not add dependencies", "Make it good", "Do everything"],
+    answer: 0,
+    why: "A concrete boundary limits scope.",
+  },
+  {
+    q: "What does MVP mean?",
+    options: [
+      "The largest feature set possible",
+      "The smallest useful first version",
+      "A database vendor",
+    ],
+    answer: 1,
+    why: "An MVP solves the central problem with minimal scope.",
+  },
+  {
+    q: "Why review a code diff?",
+    options: [
+      "To see all changed lines and spot unrelated edits",
+      "To measure font size",
+      "To count images only",
+    ],
+    answer: 0,
+    why: "A diff reveals the actual scope of a change.",
+  },
+  {
+    q: "Which is a useful test case?",
+    options: [
+      "Only the ideal input",
+      "Empty input and malformed saved data",
+      "Only a screenshot",
+    ],
+    answer: 1,
+    why: "Edge cases expose hidden assumptions.",
+  },
+  {
+    q: "What is a good release habit?",
+    options: [
+      "Test the public URL",
+      "Trust the push message alone",
+      "Remove the README",
+    ],
+    answer: 0,
+    why: "A deployed page can behave differently.",
+  },
 ];
-function quiz(n){const m=modules[n-1];if(!m){notFound();return}const questions=[...m.lessons.map(l=>l.check),extraQuestions[n-1]];shell(`<div class="course-layout">${sidebar('')}<article class="article"><section class="panel">${heading(`Module ${String(n).padStart(2,'0')} · Quiz`,esc(m.title),'Answer four questions. Pass with at least 3 correct (75%). You can retry whenever you want.')}<span class="pill">${state.quizzes[n]?'✓ Passed':'Unlimited attempts'}</span></section><form id="quiz-form">${questions.map((q,i)=>`<section class="panel"><div class="eyebrow">Question ${i+1} / 4</div><h3>${esc(q.q)}</h3><div class="answer-grid">${q.options.map((o,j)=>`<label class="checkrow"><input type="radio" name="q${i}" value="${j}" required>${esc(o)}</label>`).join('')}</div><p class="feedback" id="explain-${i}" hidden></p></section>`).join('')}<button class="button" type="submit">Check answers</button></form><div id="quiz-result" role="status" aria-live="polite"></div></article></div>`);$('#quiz-form').onsubmit=e=>{e.preventDefault();let score=0;questions.forEach((q,i)=>{const chosen=Number(new FormData(e.target).get(`q${i}`)),right=chosen===q.answer;if(right)score++;const f=$(`#explain-${i}`);f.hidden=false;f.textContent=`${right?'Correct.':'Incorrect. Correct answer: '+q.options[q.answer]+'.'} ${q.why}`});const passed=score>=3;if(passed){state.quizzes[n]=true;save()}$('#quiz-result').innerHTML=`<div class="panel card" style="margin-top:20px"><h2>${score}/4 · ${passed?'Passed!':'Try again'}</h2><p>${passed?'You can move on to the next module.':'Review the explanations and take the quiz again.'}</p><div class="actions">${passed?`<a class="button" href="${n<6?'#/lesson/'+(n+1)+'-1':'#/project'}">${n<6?'Next module':'Final project'} →</a>`:''}<button class="button secondary" type="button" id="retry">Retry quiz</button></div></div>`;$('#retry').onclick=()=>quiz(n);$('#quiz-result').scrollIntoView({behavior:'smooth',block:'center'})}}
-const projectSteps=['Define the problem, target user, and acceptance criteria','Write a focused prompt and review its output','Build task creation with validation','Add completion and deletion','Persist tasks and handle malformed saved data','Test normal, empty, long, and keyboard interactions','Write a README with setup and limitations','Publish and test the public URL'];
-function project(){shell(`${heading('Final project · TaskFlow Lite','Make the idea real.','Build your own small task manager, then prove it works. This checklist is a self-assessment; the Academy cannot inspect your external project.')}
-<div class="stats"><span class="pill">8 stages</span><span class="pill">HTML · CSS · JavaScript</span><span class="pill">Local browser storage</span></div><section class="section"><div class="grid"><article class="card"><h3>Required behavior</h3><ul><li>Add a nonempty task</li><li>Mark a task complete or incomplete</li><li>Delete a task</li><li>Keep tasks after refresh</li><li>Work on narrow screens and with a keyboard</li></ul></article><article class="card"><h3>Optional ideas</h3><ul><li>Filter by status</li><li>Edit a task</li><li>Set a due date</li><li>Export task data</li></ul><p class="muted">Finish the core behavior before adding extras.</p></article><article class="card"><h3>Starting point</h3><p>Use the browser playground in lesson 4.1 as a first experiment. Download your draft, then build your project in a separate repository.</p><a class="button secondary" href="#/lesson/4-1">Open playground →</a></article></div></section><section class="section"><h2>Project stages</h2><p class="muted">Check a stage only after completing it in your own project. Progress is stored in this browser.</p><div class="checklist">${projectSteps.map((s,i)=>`<label class="checkrow"><input type="checkbox" data-project="${i}" ${state.project.includes(i)?'checked':''}><span><strong>Stage ${i+1}</strong><br>${esc(s)}</span></label>`).join('')}</div><p style="margin-top:20px"><strong>${state.project.length}/8 stages checked</strong></p></section><section class="section"><h2>Review before you call it done</h2><p class="lead">Can you explain how tasks are represented, where they are saved, what happens after invalid input, and how you tested the published version? If so, your project is ready to share.</p><div class="actions"><a class="button secondary" href="#/resources">Open resources</a><button class="button secondary" id="project-copy">Copy project brief</button></div></section><section class="section" id="certificate"></section>`);$$('[data-project]').forEach(x=>x.onchange=()=>{const i=Number(x.dataset.project);state.project=x.checked?[...new Set([...state.project,i])]:state.project.filter(v=>v!==i);state.project.sort((a,b)=>a-b);save();project()});$('#project-copy').onclick=()=>copy('Build TaskFlow Lite: add, complete, delete, and persist tasks. Validate input, support keyboard and mobile, write a README, and test the published URL.');renderCertificate()}
-function renderCertificate(){const ready=state.completed.length===18&&Object.keys(state.quizzes).filter(k=>state.quizzes[k]).length===6&&state.project.length===8;$('#certificate').innerHTML=ready?`<div class="cert"><div class="eyebrow">Personal completion record</div><h2>Course completed</h2><p>You completed 18 lessons, passed 6 module quizzes, and checked all 8 project stages.</p><p class="muted">This is a self-paced completion record, not a credential or independent assessment of your external project.</p><button class="button secondary" onclick="window.print()">Print record</button></div>`:`<div class="panel card"><h3>Completion record</h3><p>Complete 18 lessons, pass all 6 quizzes, and check all 8 project stages to unlock your personal completion record.</p><p class="muted">Current: ${state.completed.length}/18 lessons · ${Object.keys(state.quizzes).filter(k=>state.quizzes[k]).length}/6 quizzes · ${state.project.length}/8 stages</p></div>`}
-function resourcesPage(){shell(`${heading('Reference library','Keep useful tools close.','Copy a template, search a lesson, or revisit a term whenever you need it.')}
-<label class="field">Search lessons and topics<input id="search" type="search" placeholder="Try debugging, Git, prompts, or security"></label><div class="search-results" id="results"></div><section class="section"><h2>Copyable references</h2><div class="grid">${resources.map((r,i)=>`<article class="card resource"><h3>${esc(r.title)}</h3><pre>${esc(r.body)}</pre><button class="button small secondary" data-copy="${i}">Copy</button></article>`).join('')}</div></section><section class="section"><h2>Developer glossary</h2><dl class="term-list">${Object.entries(glossary).map(([term,desc])=>`<div><dt>${esc(term)}</dt><dd>${esc(desc)}</dd></div>`).join('')}</dl></section><section class="section"><h2>Saved lessons</h2><div class="search-results">${state.bookmarks.length?state.bookmarks.map(id=>{const l=lessonById(id);return l?`<a class="card" href="#/lesson/${id}">${esc(l.title)} →</a>`:''}).join(''):'<p class="muted">Use the bookmark button on a lesson to save it here.</p>'}</div></section>`);$$('[data-copy]').forEach(b=>b.onclick=()=>copy(resources[Number(b.dataset.copy)].body));$('#search').oninput=()=>{const q=$('#search').value.trim().toLowerCase();$('#results').innerHTML=q?lessons.filter(l=>(l.title+' '+l.body.join(' ')+' '+l.example).toLowerCase().includes(q)).slice(0,12).map(l=>`<a class="card" href="#/lesson/${l.id}"><strong>${esc(l.title)}</strong><br><small>Module ${l.module} · ${l.minutes} min</small></a>`).join('')||'<p>No matching lessons. Try another term.</p>':''}}
-function notFound(){shell(`${heading('Page not found','Let’s get you back on track.')}<a class="button" href="#/">Return to Academy →</a>`)}
-function route(){const raw=decodeURIComponent(location.hash.slice(1)||'/');const parts=raw.split('/').filter(Boolean);if(!parts.length)home();else if(parts[0]==='courses')courses();else if(parts[0]==='course'&&parts[1]==='ai-assisted-development')courseLanding();else if(parts[0]==='learn')learn();else if(parts[0]==='lesson')lesson(parts[1]);else if(parts[0]==='quiz')quiz(Number(parts[1]));else if(parts[0]==='resources')resourcesPage();else if(parts[0]==='project')project();else notFound();document.title=`${$('.container h1')?.textContent||'DevFoundy Academy'} — DevFoundy Academy`;window.scrollTo({top:0,behavior:'instant'});$('#mobile-nav').hidden=true;$('#menu').setAttribute('aria-expanded','false')}
-function init(){const theme=state.theme||((matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.dataset.theme=theme;$('#theme').onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;state.theme=next;save()};$('#menu').onclick=()=>{const n=$('#mobile-nav');n.hidden=!n.hidden;$('#menu').setAttribute('aria-expanded',String(!n.hidden))};window.addEventListener('hashchange',route);route()}
+function quiz(n) {
+  const m = modules[n - 1];
+  if (!m) {
+    notFound();
+    return;
+  }
+  const questions = [...m.lessons.map((l) => l.check), extraQuestions[n - 1]];
+  shell(
+    `<div class="course-layout">${sidebar("")}<article class="article"><section class="panel">${heading(`Module ${String(n).padStart(2, "0")} · Quiz`, esc(m.title), "Answer four questions. Pass with at least 3 correct (75%). You can retry whenever you want.")}<span class="pill">${state.quizzes[n] ? "✓ Passed" : "Unlimited attempts"}</span></section><form id="quiz-form">${questions.map((q, i) => `<section class="panel"><div class="eyebrow">Question ${i + 1} / 4</div><h3>${esc(q.q)}</h3><div class="answer-grid">${q.options.map((o, j) => `<label class="checkrow"><input type="radio" name="q${i}" value="${j}" required>${esc(o)}</label>`).join("")}</div><p class="feedback" id="explain-${i}" hidden></p></section>`).join("")}<button class="button" type="submit">Check answers</button></form><div id="quiz-result" role="status" aria-live="polite"></div></article></div>`,
+  );
+  $("#quiz-form").onsubmit = (e) => {
+    e.preventDefault();
+    let score = 0;
+    questions.forEach((q, i) => {
+      const chosen = Number(new FormData(e.target).get(`q${i}`)),
+        right = chosen === q.answer;
+      if (right) score++;
+      const f = $(`#explain-${i}`);
+      f.hidden = false;
+      f.textContent = `${right ? "Correct." : "Incorrect. Correct answer: " + q.options[q.answer] + "."} ${q.why}`;
+    });
+    const passed = score >= 3;
+    if (passed) {
+      state.quizzes[n] = true;
+      save();
+    }
+    $("#quiz-result").innerHTML =
+      `<div class="panel card" style="margin-top:20px"><h2>${score}/4 · ${passed ? "Passed!" : "Try again"}</h2><p>${passed ? "You can move on to the next module." : "Review the explanations and take the quiz again."}</p><div class="actions">${passed ? `<a class="button" href="${n < 6 ? "#/lesson/" + (n + 1) + "-1" : "#/project"}">${n < 6 ? "Next module" : "Final project"} →</a>` : ""}<button class="button secondary" type="button" id="retry">Retry quiz</button></div></div>`;
+    $("#retry").onclick = () => quiz(n);
+    $("#quiz-result").scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+}
+const projectSteps = [
+  "Define the problem, target user, and acceptance criteria",
+  "Write a focused prompt and review its output",
+  "Build task creation with validation",
+  "Add completion and deletion",
+  "Persist tasks and handle malformed saved data",
+  "Test normal, empty, long, and keyboard interactions",
+  "Write a README with setup and limitations",
+  "Publish and test the public URL",
+];
+function project() {
+  shell(`${heading("Final project · TaskFlow Lite", "Make the idea real.", "Build your own small task manager, then prove it works. This checklist is a self-assessment; the Academy cannot inspect your external project.")}
+<div class="stats"><span class="pill">8 stages</span><span class="pill">HTML · CSS · JavaScript</span><span class="pill">Local browser storage</span></div><section class="section"><div class="grid"><article class="card"><h3>Required behavior</h3><ul><li>Add a nonempty task</li><li>Mark a task complete or incomplete</li><li>Delete a task</li><li>Keep tasks after refresh</li><li>Work on narrow screens and with a keyboard</li></ul></article><article class="card"><h3>Optional ideas</h3><ul><li>Filter by status</li><li>Edit a task</li><li>Set a due date</li><li>Export task data</li></ul><p class="muted">Finish the core behavior before adding extras.</p></article><article class="card"><h3>Starting point</h3><p>Use the browser playground in lesson 4.1 as a first experiment. Download your draft, then build your project in a separate repository.</p><a class="button secondary" href="#/lesson/4-1">Open playground →</a></article></div></section><section class="section"><h2>Project stages</h2><p class="muted">Check a stage only after completing it in your own project. Progress is stored in this browser.</p><div class="checklist">${projectSteps.map((s, i) => `<label class="checkrow"><input type="checkbox" data-project="${i}" ${state.project.includes(i) ? "checked" : ""}><span><strong>Stage ${i + 1}</strong><br>${esc(s)}</span></label>`).join("")}</div><p style="margin-top:20px"><strong>${state.project.length}/8 stages checked</strong></p></section><section class="section"><h2>Review before you call it done</h2><p class="lead">Can you explain how tasks are represented, where they are saved, what happens after invalid input, and how you tested the published version? If so, your project is ready to share.</p><div class="actions"><a class="button secondary" href="#/resources">Open resources</a><button class="button secondary" id="project-copy">Copy project brief</button></div></section><section class="section" id="certificate"></section>`);
+  $$("[data-project]").forEach(
+    (x) =>
+      (x.onchange = () => {
+        const i = Number(x.dataset.project);
+        state.project = x.checked
+          ? [...new Set([...state.project, i])]
+          : state.project.filter((v) => v !== i);
+        state.project.sort((a, b) => a - b);
+        save();
+        project();
+      }),
+  );
+  $("#project-copy").onclick = () =>
+    copy(
+      "Build TaskFlow Lite: add, complete, delete, and persist tasks. Validate input, support keyboard and mobile, write a README, and test the published URL.",
+    );
+  renderCertificate();
+}
+function renderCertificate() {
+  const ready =
+    state.completed.length === 18 &&
+    Object.keys(state.quizzes).filter((k) => state.quizzes[k]).length === 6 &&
+    state.project.length === 8;
+  $("#certificate").innerHTML = ready
+    ? `<div class="cert"><div class="eyebrow">Personal completion record</div><h2>Course completed</h2><p>You completed 18 lessons, passed 6 module quizzes, and checked all 8 project stages.</p><p class="muted">This is a self-paced completion record, not a credential or independent assessment of your external project.</p><button class="button secondary" onclick="window.print()">Print record</button></div>`
+    : `<div class="panel card"><h3>Completion record</h3><p>Complete 18 lessons, pass all 6 quizzes, and check all 8 project stages to unlock your personal completion record.</p><p class="muted">Current: ${state.completed.length}/18 lessons · ${Object.keys(state.quizzes).filter((k) => state.quizzes[k]).length}/6 quizzes · ${state.project.length}/8 stages</p></div>`;
+}
+function resourcesPage() {
+  shell(`${heading("Reference library", "Keep useful tools close.", "Copy a template, search a lesson, or revisit a term whenever you need it.")}
+<label class="field">Search lessons and topics<input id="search" type="search" placeholder="Try debugging, Git, prompts, or security"></label><div class="search-results" id="results"></div><section class="section"><h2>Copyable references</h2><div class="grid">${resources.map((r, i) => `<article class="card resource"><h3>${esc(r.title)}</h3><pre>${esc(r.body)}</pre><button class="button small secondary" data-copy="${i}">Copy</button></article>`).join("")}</div></section><section class="section"><h2>Developer glossary</h2><dl class="term-list">${Object.entries(
+    glossary,
+  )
+    .map(
+      ([term, desc]) => `<div><dt>${esc(term)}</dt><dd>${esc(desc)}</dd></div>`,
+    )
+    .join(
+      "",
+    )}</dl></section><section class="section"><h2>Saved lessons</h2><div class="search-results">${
+    state.bookmarks.length
+      ? state.bookmarks
+          .map((id) => {
+            const l = lessonById(id);
+            return l
+              ? `<a class="card" href="#/lesson/${id}">${esc(l.title)} →</a>`
+              : "";
+          })
+          .join("")
+      : '<p class="muted">Use the bookmark button on a lesson to save it here.</p>'
+  }</div></section>`);
+  $$("[data-copy]").forEach(
+    (b) => (b.onclick = () => copy(resources[Number(b.dataset.copy)].body)),
+  );
+  $("#search").oninput = () => {
+    const q = $("#search").value.trim().toLowerCase();
+    $("#results").innerHTML = q
+      ? lessons
+          .filter((l) =>
+            (l.title + " " + l.body.join(" ") + " " + l.example)
+              .toLowerCase()
+              .includes(q),
+          )
+          .slice(0, 12)
+          .map(
+            (l) =>
+              `<a class="card" href="#/lesson/${l.id}"><strong>${esc(l.title)}</strong><br><small>Module ${l.module} · ${l.minutes} min</small></a>`,
+          )
+          .join("") || "<p>No matching lessons. Try another term.</p>"
+      : "";
+  };
+}
+function notFound() {
+  shell(
+    `${heading("Page not found", "Let’s get you back on track.")}<a class="button" href="#/">Return to Academy →</a>`,
+  );
+}
+function route() {
+  const raw = decodeURIComponent(location.hash.slice(1) || "/");
+  const parts = raw.split("/").filter(Boolean);
+  if (!parts.length) home();
+  else if (parts[0] === "courses") courses();
+  else if (parts[0] === "course" && parts[1] === "ai-assisted-development")
+    courseLanding();
+  else if (parts[0] === "learn") learn();
+  else if (parts[0] === "lesson") lesson(parts[1]);
+  else if (parts[0] === "quiz") quiz(Number(parts[1]));
+  else if (parts[0] === "resources") resourcesPage();
+  else if (parts[0] === "project") project();
+  else notFound();
+  document.title = `${$(".container h1")?.textContent || "DevFoundy Academy"} — DevFoundy Academy`;
+  window.scrollTo({ top: 0, behavior: "instant" });
+  $("#mobile-nav").hidden = true;
+  $("#menu").setAttribute("aria-expanded", "false");
+}
+function init() {
+  const theme =
+    state.theme ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.dataset.theme = theme;
+  $("#theme").onclick = () => {
+    const next =
+      document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    state.theme = next;
+    save();
+  };
+  $("#menu").onclick = () => {
+    const n = $("#mobile-nav");
+    n.hidden = !n.hidden;
+    $("#menu").setAttribute("aria-expanded", String(!n.hidden));
+  };
+  window.addEventListener("hashchange", route);
+  route();
+}
 init();
